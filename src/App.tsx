@@ -1,0 +1,547 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+/*
+ESG-style Case Converter (single-file App.tsx)
+
+Notes:
+- Designed to look like your ESG app (dark zinc + glass cards).
+- Includes inline fallback styles so the UI won't become a white page
+  if Tailwind isn't present (e.g., some previews/sandboxes).
+- Clipboard API can be blocked by Permissions Policy. Copy uses fallback:
+  1) navigator.clipboard.writeText
+  2) document.execCommand("copy")
+  3) select output and prompt Ctrl/Cmd+C
+
+- Includes tiny self-tests via console.assert in DEV mode.
+*/
+
+type View = "signature" | "case";
+type Lang = "en" | "ru";
+
+type ActionKey =
+  | "upper"
+  | "lower"
+  | "title"
+  | "sentence"
+  | "toggle"
+  | "alternating"
+  | "camel"
+  | "pascal"
+  | "snake"
+  | "kebab"
+  | "dot"
+  | "space";
+
+const UI = {
+  en: {
+    badge: "Local utility • No server calls",
+    title: "Case converter",
+    subtitle: "Paste text on the left. Pick a format on the right.",
+    input: "Input",
+    output: "Result",
+    placeholder: "Paste or type text…",
+    empty: "Converted text will appear here…",
+    clear: "Clear",
+    copy: "Copy",
+    formats: "Formats",
+    preserve: "Preserve spaces & line breaks",
+    actions: {
+      upper: "UPPERCASE",
+      lower: "lowercase",
+      title: "Title Case",
+      sentence: "Sentence case",
+      toggle: "tOGGLE cASE",
+      alternating: "aLtErNaTiNg",
+      camel: "camelCase",
+      pascal: "PascalCase",
+      snake: "snake_case",
+      kebab: "kebab-case",
+      dot: "dot.case",
+      space: "space case",
+    } as const,
+    lang: { en: "EN", ru: "RU" },
+    toast: {
+      copied: "Copied",
+      copyFailed: "Copy blocked. Selected text — press Ctrl/Cmd+C.",
+      empty: "Nothing to copy",
+    },
+    tabs: { signature: "Signature", case: "Case" },
+    signatureStubTitle: "Email signature generator",
+    signatureStubSubtitle: "Signature view placeholder (wire your ESG app here).",
+  },
+  ru: {
+    badge: "Локальная утилита • Без сервера",
+    title: "Конвертер регистров",
+    subtitle: "Вставь текст слева. Выбери формат справа.",
+    input: "Ввод",
+    output: "Результат",
+    placeholder: "Вставь или набери текст…",
+    empty: "Тут появится результат…",
+    clear: "Очистить",
+    copy: "Копировать",
+    formats: "Форматы",
+    preserve: "Сохранять пробелы и переносы строк",
+    actions: {
+      upper: "ВСЕ ЗАГЛАВНЫЕ",
+      lower: "все строчные",
+      title: "Каждое Слово С Заглавной",
+      sentence: "Как в предложении",
+      toggle: "иНВЕРСИЯ рЕГИСТРА",
+      alternating: "чЕрЕдОвАнИе",
+      camel: "camelCase",
+      pascal: "PascalCase",
+      snake: "snake_case",
+      kebab: "kebab-case",
+      dot: "dot.case",
+      space: "разделить пробелами",
+    } as const,
+    lang: { en: "EN", ru: "RU" },
+    toast: {
+      copied: "Скопировано",
+      copyFailed: "Копирование заблокировано. Текст выделен — нажми Ctrl/Cmd+C.",
+      empty: "Нечего копировать",
+    },
+    tabs: { signature: "Signature", case: "Case" },
+    signatureStubTitle: "Email signature generator",
+    signatureStubSubtitle: "Заглушка страницы подписи (подключи сюда ESG).",
+  },
+} as const;
+
+function splitWords(text: string) {
+  return text.trim().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
+function preserveWordTransform(input: string, fn: (w: string) => string) {
+  return input.replace(/\p{L}[\p{L}\p{N}]*/gu, (w) => fn(w));
+}
+
+function toTitleCase(text: string) {
+  return text.replace(/\p{L}[\p{L}\p{N}]*/gu, (w) => {
+    const chars = Array.from(w.toLocaleLowerCase());
+    if (!chars.length) return "";
+    chars[0] = chars[0].toLocaleUpperCase();
+    return chars.join("");
+  });
+}
+
+function toSentenceCase(text: string) {
+  const lower = text.toLocaleLowerCase();
+  let out = "";
+  let capNext = true;
+
+  for (const ch of Array.from(lower)) {
+    if (capNext && /\p{L}/u.test(ch)) {
+      out += ch.toLocaleUpperCase();
+      capNext = false;
+      continue;
+    }
+    out += ch;
+    if (/[.!?]/.test(ch) || ch === "\n") capNext = true;
+  }
+  return out;
+}
+
+function toggleCase(text: string) {
+  let out = "";
+  for (const ch of Array.from(text)) {
+    if (!/\p{L}/u.test(ch)) out += ch;
+    else out += ch === ch.toLocaleUpperCase() ? ch.toLocaleLowerCase() : ch.toLocaleUpperCase();
+  }
+  return out;
+}
+
+function alternatingCase(text: string) {
+  let out = "";
+  let flip = false;
+  for (const ch of Array.from(text)) {
+    if (!/\p{L}/u.test(ch)) {
+      out += ch;
+      continue;
+    }
+    out += flip ? ch.toLocaleUpperCase() : ch.toLocaleLowerCase();
+    flip = !flip;
+  }
+  return out;
+}
+
+function toCamelCase(text: string) {
+  const words = splitWords(text);
+  if (!words.length) return "";
+  const first = words[0].toLocaleLowerCase();
+  const rest = words
+    .slice(1)
+    .map((w) => {
+      const chars = Array.from(w.toLocaleLowerCase());
+      if (!chars.length) return "";
+      chars[0] = chars[0].toLocaleUpperCase();
+      return chars.join("");
+    })
+    .join("");
+  return first + rest;
+}
+
+function toPascalCase(text: string) {
+  return splitWords(text)
+    .map((w) => {
+      const chars = Array.from(w.toLocaleLowerCase());
+      if (!chars.length) return "";
+      chars[0] = chars[0].toLocaleUpperCase();
+      return chars.join("");
+    })
+    .join("");
+}
+
+function toDelimited(text: string, d: string) {
+  return splitWords(text).map((w) => w.toLocaleLowerCase()).join(d);
+}
+
+function toSpaceCase(text: string) {
+  return splitWords(text).join(" ");
+}
+
+function computeOutput(text: string, preserve: boolean, active: ActionKey) {
+  const input = text ?? "";
+
+  if (active === "upper")
+    return preserve
+      ? preserveWordTransform(input, (w) => w.toLocaleUpperCase())
+      : input.trim().toLocaleUpperCase();
+
+  if (active === "lower")
+    return preserve
+      ? preserveWordTransform(input, (w) => w.toLocaleLowerCase())
+      : input.trim().toLocaleLowerCase();
+
+  if (active === "title") return preserve ? toTitleCase(input) : toTitleCase(input.trim());
+  if (active === "sentence") return preserve ? toSentenceCase(input) : toSentenceCase(input.trim());
+  if (active === "toggle") return preserve ? toggleCase(input) : toggleCase(input.trim());
+  if (active === "alternating")
+    return preserve ? alternatingCase(input) : alternatingCase(input.trim());
+
+  // word-based ones ignore punctuation by design
+  if (active === "camel") return toCamelCase(input);
+  if (active === "pascal") return toPascalCase(input);
+  if (active === "snake") return toDelimited(input, "_");
+  if (active === "kebab") return toDelimited(input, "-");
+  if (active === "dot") return toDelimited(input, ".");
+  if (active === "space") return toSpaceCase(input);
+
+  return input;
+}
+
+function runSelfTests() {
+  const assert = (name: string, cond: boolean) => console.assert(cond, `Test failed: ${name}`);
+
+  assert("upper preserves punctuation", computeOutput("Hi, Bob!", true, "upper") === "HI, BOB!");
+  assert("lower trims when preserve=false", computeOutput("  Hi  ", false, "lower") === "hi");
+  assert("title basic", computeOutput("hello world", true, "title") === "Hello World");
+  assert(
+    "sentence casing respects punctuation",
+    computeOutput("HELLO. HOW ARE YOU?\nOK!", true, "sentence") === "Hello. How are you?\nOk!",
+  );
+  assert("toggle", computeOutput("AbC", true, "toggle") === "aBc");
+  assert("alternating ignores spaces", computeOutput("ab cd", true, "alternating") === "aB cD");
+  assert("camel", computeOutput("hello world", true, "camel") === "helloWorld");
+  assert("pascal", computeOutput("hello world", true, "pascal") === "HelloWorld");
+  assert("snake", computeOutput("Hello, world!", true, "snake") === "hello_world");
+  assert("kebab", computeOutput("Hello, world!", true, "kebab") === "hello-world");
+  assert("dot", computeOutput("Hello, world!", true, "dot") === "hello.world");
+  assert("space", computeOutput("Hello, world!", true, "space") === "Hello world");
+}
+
+async function safeCopyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+export default function App() {
+  const [view, setView] = useState<View>("case");
+  const [lang, setLang] = useState<Lang>("ru");
+  const t = UI[lang];
+
+  const [input, setInput] = useState("");
+  const [preserve, setPreserve] = useState(true);
+  const [active, setActive] = useState<ActionKey>("upper");
+
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  const output = useMemo(() => computeOutput(input, preserve, active), [input, preserve, active]);
+  const outputRef = useRef<HTMLDivElement | null>(null);
+
+  const buttonGhost =
+    "text-xs text-zinc-300 hover:text-white rounded-lg px-2 py-1 border border-white/10 hover:border-white/20 transition-all duration-200 hover:bg-white/5";
+
+  // Fallback inline styles (so page isn't white without Tailwind)
+  const S = {
+    page: {
+      minHeight: "100vh",
+      background: "#09090b",
+      color: "#f4f4f5",
+      fontFamily:
+        "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji",
+    } as React.CSSProperties,
+    shell: { maxWidth: 1152, margin: "0 auto", padding: "32px 16px" } as React.CSSProperties,
+    chip: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      borderRadius: 9999,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(255,255,255,0.05)",
+      padding: "4px 12px",
+      fontSize: 12,
+      color: "#d4d4d8",
+    } as React.CSSProperties,
+    dot: { width: 6, height: 6, borderRadius: 9999, background: "rgba(255,255,255,0.60)" } as React.CSSProperties,
+    card: {
+      borderRadius: 16,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(255,255,255,0.05)",
+      padding: 20,
+    } as React.CSSProperties,
+    panel: {
+      borderRadius: 16,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(9,9,11,0.50)",
+      padding: 12,
+    } as React.CSSProperties,
+    textarea: {
+      width: "100%",
+      minHeight: 360,
+      resize: "vertical",
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(9,9,11,0.60)",
+      color: "#f4f4f5",
+      padding: "10px 12px",
+      fontSize: 14,
+      lineHeight: "20px",
+      outline: "none",
+    } as React.CSSProperties,
+    toast: {
+      position: "fixed",
+      top: 16,
+      right: 16,
+      zIndex: 50,
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(9,9,11,0.70)",
+      padding: "8px 12px",
+      fontSize: 12,
+      color: "#e4e4e7",
+      boxShadow: "0 10px 25px rgba(0,0,0,0.35)",
+      backdropFilter: "blur(10px)",
+    } as React.CSSProperties,
+  };
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 1400);
+  };
+
+  const selectOutputText = () => {
+    const el = outputRef.current;
+    if (!el) return;
+
+    const sel = window.getSelection();
+    if (!sel) return;
+
+    sel.removeAllRanges();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    sel.addRange(range);
+  };
+
+  const onCopy = async () => {
+    const text = output;
+    if (!text.trim()) {
+      showToast(t.toast.empty);
+      return;
+    }
+
+    const ok = await safeCopyToClipboard(text);
+    if (ok) {
+      showToast(t.toast.copied);
+      return;
+    }
+
+    selectOutputText();
+    showToast(t.toast.copyFailed);
+  };
+
+  useEffect(() => {
+    try {
+      // @ts-expect-error allow environments without import.meta
+      if (typeof import.meta !== "undefined" && import.meta.env?.DEV) runSelfTests();
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100" style={S.page}>
+      <div className="pointer-events-none fixed inset-0 opacity-70">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute top-24 right-10 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+      </div>
+
+      {toast && (
+        <div
+          className="fixed top-4 right-4 z-50 rounded-xl border border-white/10 bg-zinc-950/70 backdrop-blur px-3 py-2 text-xs text-zinc-200 shadow-lg"
+          style={S.toast}
+        >
+          {toast}
+        </div>
+      )}
+
+      <div className="relative mx-auto max-w-6xl px-4 py-8 md:py-10" style={S.shell}>
+        <header className="mb-6 md:mb-8">
+          <div className="flex items-center justify-between gap-3">
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300"
+              style={S.chip}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-white/60" style={S.dot} />
+              {t.badge}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setView("signature")} className={buttonGhost}>
+                {t.tabs.signature}
+              </button>
+              <button type="button" onClick={() => setView("case")} className={buttonGhost}>
+                {t.tabs.case}
+              </button>
+              <button type="button" onClick={() => setLang("en")} className={buttonGhost}>
+                {t.lang.en}
+              </button>
+              <button type="button" onClick={() => setLang("ru")} className={buttonGhost}>
+                {t.lang.ru}
+              </button>
+            </div>
+          </div>
+
+          <h1 className="mt-4 text-2xl md:text-3xl font-semibold tracking-tight">
+            {view === "case" ? t.title : t.signatureStubTitle}
+          </h1>
+          <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
+            {view === "case" ? t.subtitle : t.signatureStubSubtitle}
+          </p>
+        </header>
+
+        {view === "signature" && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-zinc-400" style={S.card}>
+            {lang === "ru"
+              ? "Здесь должна быть твоя страница генератора подписи (ESG)."
+              : "Your ESG signature generator view should live here."}
+          </div>
+        )}
+
+        {view === "case" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5" style={S.card}>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">{t.input}</div>
+                <button type="button" onClick={() => setInput("")} className={buttonGhost}>
+                  {t.clear}
+                </button>
+              </div>
+
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={t.placeholder}
+                className="mt-4 w-full min-h-[360px] resize-y rounded-xl bg-zinc-950/60 border border-white/10 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-2 focus:ring-white/20"
+                style={S.textarea}
+              />
+
+              <label className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={preserve}
+                  onChange={(e) => setPreserve(e.target.checked)}
+                  className="h-4 w-4 rounded border-white/20 bg-zinc-950/60"
+                />
+                {t.preserve}
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5" style={S.card}>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">{t.output}</div>
+                <button type="button" onClick={onCopy} className={buttonGhost} disabled={!output.trim()}>
+                  {t.copy}
+                </button>
+              </div>
+
+              <div
+                ref={outputRef}
+                className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-3 text-sm whitespace-pre-wrap break-words min-h-[160px] select-text"
+                style={S.panel}
+              >
+                {output || <span className="text-zinc-500">{t.empty}</span>}
+              </div>
+
+              <div className="mt-6">
+                <div className="text-sm font-semibold text-zinc-100">{t.formats}</div>
+
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(t.actions).map(([key, label]) => {
+                    const k = key as ActionKey;
+                    const isActive = active === k;
+                    return (
+                      <button
+                        type="button"
+                        key={k}
+                        onClick={() => setActive(k)}
+                        className={
+                          "rounded-xl px-3 py-2 text-sm font-semibold border transition-all " +
+                          (isActive
+                            ? "bg-white text-zinc-950 border-white"
+                            : "bg-zinc-950/40 text-zinc-100 border-white/10 hover:border-white/20")
+                        }
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
