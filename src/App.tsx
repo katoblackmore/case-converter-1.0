@@ -329,7 +329,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="h-screen bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
+    <div className="h-screen bg-zinc-950 text-zinc-100 flex flex-col overflow-y-auto lg:overflow-hidden">
       <div className="pointer-events-none fixed inset-0 opacity-70">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute top-24 right-10 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
@@ -342,8 +342,8 @@ export default function App() {
         </div>
       )}
 
-      <div className="relative mx-auto max-w-6xl px-4 py-8 md:py-10 flex flex-col flex-1 min-h-0">
-        <header className="mb-6 md:mb-8">
+      <div className="relative mx-auto w-full max-w-6xl px-4 py-6 md:py-8 flex flex-col flex-1 min-h-0">
+        <header className="mb-4 md:mb-6 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
               <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
@@ -381,7 +381,7 @@ export default function App() {
         )}
 
         {view === "case" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-0 lg:grid-rows-[1fr]">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 flex flex-col min-h-0 overflow-hidden">
               <div className="flex items-center justify-between shrink-0">
                 <div className="text-sm font-semibold">{t.input}</div>
@@ -423,7 +423,7 @@ export default function App() {
                 {output || <span className="text-zinc-500">{t.empty}</span>}
               </div>
 
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
+              <div className="mt-4 grid grid-cols-2 gap-2 shrink-0">
                 {Object.entries(t.actions).map(([key, label]) => {
                   const k = key as ActionKey;
                   const isActive = active === k;
@@ -433,7 +433,7 @@ export default function App() {
                       key={k}
                       onClick={() => setActive(k)}
                       className={
-                        "rounded-xl px-3 py-2 text-sm font-semibold border transition-all " +
+                        "rounded-xl px-3 py-1.5 text-xs font-semibold border transition-all truncate " +
                         (isActive
                           ? "bg-white text-zinc-950 border-white"
                           : "bg-zinc-950/40 text-zinc-100 border-white/10 hover:border-white/20")
