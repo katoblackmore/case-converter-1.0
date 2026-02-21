@@ -329,7 +329,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="h-screen bg-zinc-950 text-zinc-100 flex flex-col overflow-hidden">
       <div className="pointer-events-none fixed inset-0 opacity-70">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute top-24 right-10 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
@@ -342,7 +342,7 @@ export default function App() {
         </div>
       )}
 
-      <div className="relative mx-auto max-w-6xl px-4 py-8 md:py-10">
+      <div className="relative mx-auto max-w-6xl px-4 py-8 md:py-10 flex flex-col flex-1 min-h-0">
         <header className="mb-6 md:mb-8">
           <div className="flex items-center justify-between gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
@@ -381,9 +381,9 @@ export default function App() {
         )}
 
         {view === "case" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5">
-              <div className="flex items-center justify-between">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-0">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
                 <div className="text-sm font-semibold">{t.input}</div>
                 <button type="button" onClick={() => setInput("")} className={buttonGhost}>
                   {t.clear}
@@ -394,10 +394,10 @@ export default function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={t.placeholder}
-                className="mt-4 w-full min-h-[360px] resize-y rounded-xl bg-zinc-950/60 border border-white/10 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-2 focus:ring-white/20"
+                className="mt-4 w-full flex-1 min-h-0 resize-none rounded-xl bg-zinc-950/60 border border-white/10 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-2 focus:ring-white/20"
               />
 
-              <label className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
+              <label className="mt-3 flex items-center gap-2 text-sm text-zinc-400 shrink-0">
                 <input
                   type="checkbox"
                   checked={preserve}
@@ -408,8 +408,8 @@ export default function App() {
               </label>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5">
-              <div className="flex items-center justify-between">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
                 <div className="text-sm font-semibold">{t.output}</div>
                 <button type="button" onClick={onCopy} className={buttonGhost} disabled={!output.trim()}>
                   {t.copy}
@@ -418,12 +418,12 @@ export default function App() {
 
               <div
                 ref={outputRef}
-                className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-3 text-sm whitespace-pre-wrap break-words min-h-[160px] select-text"
+                className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-3 text-sm whitespace-pre-wrap break-words flex-1 min-h-0 overflow-y-auto select-text"
               >
                 {output || <span className="text-zinc-500">{t.empty}</span>}
               </div>
 
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
                 {Object.entries(t.actions).map(([key, label]) => {
                   const k = key as ActionKey;
                   const isActive = active === k;
