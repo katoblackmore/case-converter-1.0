@@ -349,10 +349,10 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setLang("en")} className={buttonGhost}>
+              <button type="button" onClick={() => setLang("en")} className={buttonGhost + (lang === "en" ? " border-white text-white" : "")}>
                 {t.lang.en}
               </button>
-              <button type="button" onClick={() => setLang("ru")} className={buttonGhost}>
+              <button type="button" onClick={() => setLang("ru")} className={buttonGhost + (lang === "ru" ? " border-white text-white" : "")}>
                 {t.lang.ru}
               </button>
             </div>
