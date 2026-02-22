@@ -267,7 +267,7 @@ async function safeCopyToClipboard(text: string): Promise<boolean> {
 }
 
 export default function App() {
-  const [lang, setLang] = useState<Lang>("ru");
+  const [lang, setLang] = useState<Lang>("en");
   const t = UI[lang];
 
   const [input, setInput] = useState("");
