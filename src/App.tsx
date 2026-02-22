@@ -387,7 +387,7 @@ export default function App() {
                   type="checkbox"
                   checked={preserve}
                   onChange={(e) => setPreserve(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 bg-zinc-950/60"
+                  className="h-4 w-4 shrink-0 appearance-none rounded border border-white/20 bg-zinc-950/60 checked:bg-white checked:border-white cursor-pointer relative after:content-[''] after:absolute after:hidden after:left-[4.5px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-r-2 after:border-b-2 after:border-zinc-950 after:rotate-45 checked:after:block"
                 />
                 {t.preserve}
               </label>
