@@ -18,7 +18,6 @@ Also:
 - Added lightweight self-tests for transforms (console.assert) in DEV.
 */
 
-type View = "signature" | "case";
 type Lang = "en" | "ru";
 
 type ActionKey =
@@ -268,8 +267,7 @@ async function safeCopyToClipboard(text: string): Promise<boolean> {
 }
 
 export default function App() {
-  const [view, setView] = useState<View>("case");
-  const [lang, setLang] = useState<Lang>("ru");
+  const [lang, setLang] = useState<Lang>("en");
   const t = UI[lang];
 
   const [input, setInput] = useState("");
@@ -329,7 +327,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="h-screen bg-zinc-950 text-zinc-100 flex flex-col overflow-y-auto lg:overflow-hidden">
       <div className="pointer-events-none fixed inset-0 opacity-70">
         <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute top-24 right-10 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
@@ -342,8 +340,8 @@ export default function App() {
         </div>
       )}
 
-      <div className="relative mx-auto max-w-6xl px-4 py-8 md:py-10">
-        <header className="mb-6 md:mb-8">
+      <div className="relative mx-auto w-full max-w-6xl px-4 py-6 md:py-8 flex flex-col flex-1 min-h-0">
+        <header className="mb-4 md:mb-6 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
               <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
@@ -351,39 +349,26 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setView("signature")} className={buttonGhost}>
-                Signature
-              </button>
-              <button type="button" onClick={() => setView("case")} className={buttonGhost}>
-                Case
-              </button>
-              <button type="button" onClick={() => setLang("en")} className={buttonGhost}>
+              <button type="button" onClick={() => setLang("en")} className={buttonGhost + (lang === "en" ? " border-white text-white" : "")}>
                 {t.lang.en}
               </button>
-              <button type="button" onClick={() => setLang("ru")} className={buttonGhost}>
+              <button type="button" onClick={() => setLang("ru")} className={buttonGhost + (lang === "ru" ? " border-white text-white" : "")}>
                 {t.lang.ru}
               </button>
             </div>
           </div>
 
           <h1 className="mt-4 text-2xl md:text-3xl font-semibold tracking-tight">
-            {view === "case" ? t.title : "Email signature generator"}
+            {t.title}
           </h1>
           <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
-            {view === "case" ? t.subtitle : "Signature generator placeholder view"}
+            {t.subtitle}
           </p>
         </header>
 
-        {view === "signature" && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-zinc-400">
-            Signature view placeholder.
-          </div>
-        )}
-
-        {view === "case" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5">
-              <div className="flex items-center justify-between">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-0 lg:grid-rows-[1fr]">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
                 <div className="text-sm font-semibold">{t.input}</div>
                 <button type="button" onClick={() => setInput("")} className={buttonGhost}>
                   {t.clear}
@@ -394,22 +379,22 @@ export default function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={t.placeholder}
-                className="mt-4 w-full min-h-[360px] resize-y rounded-xl bg-zinc-950/60 border border-white/10 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-2 focus:ring-white/20"
+                className="mt-4 w-full flex-1 min-h-0 resize-none rounded-xl bg-zinc-950/60 border border-white/10 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-2 focus:ring-white/20"
               />
 
-              <label className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
+              <label className="mt-3 flex items-center gap-2 text-sm text-zinc-400 shrink-0">
                 <input
                   type="checkbox"
                   checked={preserve}
                   onChange={(e) => setPreserve(e.target.checked)}
-                  className="h-4 w-4 rounded border-white/20 bg-zinc-950/60"
+                  className="h-4 w-4 shrink-0 appearance-none rounded border border-white/20 bg-zinc-950/60 checked:bg-white checked:border-white cursor-pointer relative after:content-[''] after:absolute after:hidden after:left-[4.5px] after:top-[1px] after:w-[5px] after:h-[9px] after:border-r-2 after:border-b-2 after:border-zinc-950 after:rotate-45 checked:after:block"
                 />
                 {t.preserve}
               </label>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5">
-              <div className="flex items-center justify-between">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between shrink-0">
                 <div className="text-sm font-semibold">{t.output}</div>
                 <button type="button" onClick={onCopy} className={buttonGhost} disabled={!output.trim()}>
                   {t.copy}
@@ -418,12 +403,12 @@ export default function App() {
 
               <div
                 ref={outputRef}
-                className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-3 text-sm whitespace-pre-wrap break-words min-h-[160px] select-text"
+                className="mt-4 rounded-2xl border border-white/10 bg-zinc-950/50 p-3 text-sm whitespace-pre-wrap break-words flex-1 min-h-0 overflow-y-auto select-text"
               >
                 {output || <span className="text-zinc-500">{t.empty}</span>}
               </div>
 
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-2 shrink-0">
                 {Object.entries(t.actions).map(([key, label]) => {
                   const k = key as ActionKey;
                   const isActive = active === k;
@@ -433,7 +418,7 @@ export default function App() {
                       key={k}
                       onClick={() => setActive(k)}
                       className={
-                        "rounded-xl px-3 py-2 text-sm font-semibold border transition-all " +
+                        "rounded-xl px-3 py-1.5 text-xs font-semibold border transition-all truncate " +
                         (isActive
                           ? "bg-white text-zinc-950 border-white"
                           : "bg-zinc-950/40 text-zinc-100 border-white/10 hover:border-white/20")
@@ -446,7 +431,6 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}
       </div>
     </div>
   );
