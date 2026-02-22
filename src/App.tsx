@@ -18,7 +18,6 @@ Also:
 - Added lightweight self-tests for transforms (console.assert) in DEV.
 */
 
-type View = "signature" | "case";
 type Lang = "en" | "ru";
 
 type ActionKey =
@@ -268,7 +267,6 @@ async function safeCopyToClipboard(text: string): Promise<boolean> {
 }
 
 export default function App() {
-  const [view, setView] = useState<View>("case");
   const [lang, setLang] = useState<Lang>("ru");
   const t = UI[lang];
 
@@ -351,12 +349,6 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setView("signature")} className={buttonGhost}>
-                Signature
-              </button>
-              <button type="button" onClick={() => setView("case")} className={buttonGhost}>
-                Case
-              </button>
               <button type="button" onClick={() => setLang("en")} className={buttonGhost}>
                 {t.lang.en}
               </button>
@@ -367,20 +359,13 @@ export default function App() {
           </div>
 
           <h1 className="mt-4 text-2xl md:text-3xl font-semibold tracking-tight">
-            {view === "case" ? t.title : "Email signature generator"}
+            {t.title}
           </h1>
           <p className="mt-2 text-sm text-zinc-400 max-w-2xl">
-            {view === "case" ? t.subtitle : "Signature generator placeholder view"}
+            {t.subtitle}
           </p>
         </header>
 
-        {view === "signature" && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-zinc-400">
-            Signature view placeholder.
-          </div>
-        )}
-
-        {view === "case" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-0 lg:grid-rows-[1fr]">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 flex flex-col min-h-0 overflow-hidden">
               <div className="flex items-center justify-between shrink-0">
@@ -446,7 +431,6 @@ export default function App() {
               </div>
             </div>
           </div>
-        )}
       </div>
     </div>
   );
